@@ -11,9 +11,10 @@ var configOptions = configuration.GetSection(ConfigOptions.SectionName).Get<Conf
 
 Console.Write($"File Generator is starting.{Environment.NewLine}" +
     $"Please check configuration:{Environment.NewLine}" +
-    $"\tOutput file path: {configOptions.OutputFilesDirectory}{Environment.NewLine}" +
-    $"\tInput file with strings path: {configOptions.InputStingsFilePath}{Environment.NewLine}" +
+    $"\tOutput file path: {configOptions.OutputFilesDirectory}{configOptions.OutputFileName}{Environment.NewLine}" +
+    $"\tOutput strings format: {configOptions.OutputStringFormat}{Environment.NewLine}" +
     $"\tOutput file expected size: {configOptions.OutputFileSizeInMBs} MB{Environment.NewLine}" +
+    $"\tInput file with strings path: {configOptions.InputStingsFileName}{Environment.NewLine}" +
     $"Is provided configuration correct?(Y/n):");
 
 switch (Console.ReadKey().Key)
@@ -26,5 +27,8 @@ switch (Console.ReadKey().Key)
     default:
         break;
 }
+
+StartupValidator.Validate(configOptions);
+var lineGenerator = new StringLineGenerator(configOptions.OutputStringFormat, configOptions.InputStringsFilePath);
 
 Environment.Exit(0);
