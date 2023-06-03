@@ -1,23 +1,27 @@
 ﻿namespace Sorter.BigFiles.Generator
 {
-    public class StringLineGenerator
+    public interface IStringLineGenerator
+    {
+        public string GenerateRandomString { get; }
+    }
+
+    public class StringLineGenerator : IStringLineGenerator
     {
         private readonly string[] _inputStrings;
         private readonly string _outputStringFormat;
         private readonly Random _random;
 
-        public StringLineGenerator(string outputStringFormat, string inputStringsFilePath)
+        public StringLineGenerator(string outputStringFormat, string[] stringsForOutput)
         {
+            if(string.IsNullOrEmpty(outputStringFormat))
+                throw new ArgumentException(null, nameof(outputStringFormat));
+
+            if(stringsForOutput is null || stringsForOutput.Length == 0)
+                throw new ArgumentException(null, nameof(stringsForOutput));
+
+
             _outputStringFormat = outputStringFormat;
-
-            using var sr = new StreamReader(inputStringsFilePath);
-
-            _inputStrings = sr.ReadToEnd()
-                .Split(Environment.NewLine)
-                .Where(_ => !string.IsNullOrWhiteSpace(_))
-                .Select(x => x.Trim())
-                .ToArray();
-
+            _inputStrings = stringsForOutput;
             _random = new Random((int)DateTime.Now.Ticks);
         }
 

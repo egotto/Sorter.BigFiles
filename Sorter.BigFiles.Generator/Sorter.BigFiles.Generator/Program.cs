@@ -30,10 +30,11 @@ switch (Console.ReadKey().Key)
 
 StartupValidator.Validate(configOptions);
 var outputFilePath = Path.Combine(configOptions.OutputFilesDirectory, configOptions.OutputFileName);
-var lineGenerator = new StringLineGenerator(configOptions.OutputStringFormat, configOptions.InputStringsFilePath);
+var inputFileReader = new InputStringsFileReader();
+var lineGenerator = new StringLineGenerator(configOptions.OutputStringFormat, inputFileReader.ReadInputStrings(configOptions.InputStringsFilePath));
 
 var fileGenerator = new BigFileGenerator(outputFilePath, configOptions.OutputFileSizeInBytes, lineGenerator);
-fileGenerator.CreateBigFile(out var addedLinesCount);
+fileGenerator.CreateFileWithStrings(out var addedLinesCount);
 Console.WriteLine($"The expected file has been created and saved to the path: {outputFilePath}.{Environment.NewLine}File contains {addedLinesCount:N} lines of strings.");
 
 Environment.Exit(0);

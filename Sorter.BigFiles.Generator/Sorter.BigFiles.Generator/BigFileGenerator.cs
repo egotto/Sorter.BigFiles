@@ -1,21 +1,26 @@
 ﻿namespace Sorter.BigFiles.Generator
 {
-    internal class BigFileGenerator
+    public interface IFileGenerator
+    {
+        public void CreateFileWithStrings(out long addedLinesCount);
+    }
+
+    internal class BigFileGenerator : IFileGenerator
     {
         private const int startLinesCount = 1000;
         private readonly long _expectedSize;
-        private readonly StringLineGenerator _linesGenerator;
+        private readonly IStringLineGenerator _linesGenerator;
         private readonly string _filePath;
         private long _addedLines = 0;
 
-        public BigFileGenerator(string outputFilePath, long outputSizeInBytes, StringLineGenerator linesGenerator)
+        public BigFileGenerator(string outputFilePath, long outputSizeInBytes, IStringLineGenerator linesGenerator)
         {
             _expectedSize = outputSizeInBytes;
             _linesGenerator = linesGenerator;
             _filePath = outputFilePath;
         }
 
-        public void CreateBigFile(out long addedLinesCount)
+        public void CreateFileWithStrings(out long addedLinesCount)
         {
             if (File.Exists(_filePath))
                 File.Delete(_filePath);
@@ -25,7 +30,7 @@
 
             // Here we need to add a certain number of string lines
             // to the file in order to calculate approximately the remaining
-            // number to create a file of the required size.
+            // number of lines to create a file of the required size.
             AddLines(startLinesCount);
 
             long currentSize = GetCurrentFileSize;
