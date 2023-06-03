@@ -23,19 +23,23 @@
             Console.WriteLine();
             Console.Write(GetProgressBar(0, _expectedSize));
 
+            // Here we need to add a certain number of string lines
+            // to the file in order to calculate approximately the remaining
+            // number to create a file of the required size.
             AddLines(startLinesCount);
 
             long currentSize = GetCurrentFileSize;
             while (currentSize < _expectedSize)
             {
                 Console.Write(GetProgressBar(currentSize, _expectedSize));
-                long avrBytesInLine = currentSize / _addedLines; //bytes per line
-                long avrRestLinesCount = (_expectedSize - currentSize) / avrBytesInLine;
-                long halfOfRestLines = avrRestLinesCount / 2;
-                if (halfOfRestLines < 1000)
-                    halfOfRestLines = 1000;
 
-                AddLines(halfOfRestLines);
+                long avrBytesInLine = currentSize / _addedLines; //bytes per line
+                long avrRemainLinesCount = (_expectedSize - currentSize) / avrBytesInLine;
+                long halfOfRemainLines = avrRemainLinesCount / 2;
+                if (halfOfRemainLines < 1000)
+                    halfOfRemainLines = 1000;
+
+                AddLines(halfOfRemainLines);
                 currentSize = GetCurrentFileSize;
             }
 
