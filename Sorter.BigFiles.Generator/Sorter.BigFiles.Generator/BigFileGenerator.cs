@@ -5,7 +5,7 @@
         public void CreateFileWithStrings(out long addedLinesCount);
     }
 
-    internal class BigFileGenerator : IFileGenerator
+    public class BigFileGenerator : IFileGenerator
     {
         private const int startLinesCount = 1000;
         private readonly long _expectedSize;
@@ -64,8 +64,8 @@
         }
         private string GetProgressBar(long progress, long max)
         {
+            if (progress > max) progress = max;
             int percent = (int)((double)progress / max * 100);
-            if(percent > 100) percent = 100;
             int numFilled = (int)((double)progress / max * 50);
             string progressBar = $"\r|{new string('=', numFilled)}{new string(' ', 50 - numFilled)}| {percent}%";
             return progressBar;

@@ -5,7 +5,7 @@
     {
         string[] ReadInputStrings(string filePath);
     }
-    internal class InputStringsFileReader : IInputStringsFileReader
+    public class InputStringsFileReader : IInputStringsFileReader
     {
         public string[] ReadInputStrings(string filePath)
         {

@@ -2,7 +2,7 @@
 {
     internal static class StartupValidator
     {
-        public static void Validate(ConfigOptions configOptions)
+        internal static void Validate(ConfigOptions configOptions)
         {
             if (!File.Exists(configOptions.InputStringsFilePath))
             {
