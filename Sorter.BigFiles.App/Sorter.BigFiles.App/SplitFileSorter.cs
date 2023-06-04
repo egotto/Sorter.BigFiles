@@ -36,6 +36,7 @@ public class SplitFileSorter
                 .OrderBy(_=>_.Text)
                 .ThenBy(_=>_.Number)
                 .Select(_=>_.ToString())
+                .AsParallel()
                 .ToArray();
         }
 

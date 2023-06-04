@@ -1,6 +1,6 @@
 ﻿namespace Sorter.BigFiles.App
 {
-    internal class SortLine
+    internal class SortLine : IComparable
     {
         public SortLine(string[] line)
         {
@@ -17,6 +17,18 @@
         public int Number { get; set; }
 
         public string Text { get; set; }
+
+        public int CompareTo(object? obj)
+        {
+            if (!(obj is SortLine))
+                throw new ArgumentException("Invalid parameters");
+
+            var result = Text.CompareTo(((SortLine)obj).Text);
+            if (result != 0) 
+                return result;
+            else
+                return Number.CompareTo(((SortLine)obj).Number);
+        }
 
         public override string ToString()
         {

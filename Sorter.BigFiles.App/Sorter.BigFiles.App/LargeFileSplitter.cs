@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Text;
 
 namespace Sorter.BigFiles.App;
 
@@ -26,11 +22,11 @@ public class LargeFileSplitter
             return 0;
         }
 
-        if(!File.Exists(_options.SourceFilePath))
+        if (!File.Exists(_options.SourceFilePath))
             throw new FileNotFoundException(_options.SourceFilePath);
 
         Console.WriteLine("Start splitting dataset file");
-        
+
         uint noOfCurrentFile = 0;
 
         if (!Directory.Exists(_options.OutputSplitFilesDirectory))
