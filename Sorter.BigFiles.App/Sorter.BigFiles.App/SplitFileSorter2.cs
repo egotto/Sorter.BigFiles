@@ -18,7 +18,7 @@ namespace Sorter.BigFiles.App
         public void SortFile(object? filePath)
         {
             var fileName = filePath as string ?? string.Empty;
-            SemStaticPool.Semaphore.WaitOne();
+            SemStaticPool.SemaphoreProcessing.WaitOne();
             if (!File.Exists(fileName))
                 throw new FileNotFoundException();
             var sortedFileName = fileName + sortedKey;
@@ -46,7 +46,7 @@ namespace Sorter.BigFiles.App
 
             File.WriteAllLines(sortedFileName, orderedLines);
 
-            SemStaticPool.Semaphore.Release();
+            SemStaticPool.SemaphoreProcessing.Release();
         }
     }
 }

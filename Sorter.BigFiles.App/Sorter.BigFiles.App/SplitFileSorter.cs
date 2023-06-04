@@ -20,7 +20,7 @@ public class SplitFileSorter
     public void SortFile(object? filePath)
     {
         var fileName = filePath as string ?? string.Empty;
-        SemStaticPool.Semaphore.WaitOne();
+        SemStaticPool.SemaphoreProcessing.WaitOne();
         if(!File.Exists(fileName)) 
             throw new FileNotFoundException();
         var sortedFileName = fileName + sortedKey;
@@ -46,6 +46,6 @@ public class SplitFileSorter
 
         File.WriteAllLines(sortedFileName, orderedLines);
 
-        SemStaticPool.Semaphore.Release();
+        SemStaticPool.SemaphoreProcessing.Release();
     }
 }

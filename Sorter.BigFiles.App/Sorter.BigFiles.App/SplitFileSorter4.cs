@@ -10,7 +10,7 @@ namespace Sorter.BigFiles.App
         public void SortFile(object? filePath)
         {
             var fileName = filePath as string ?? string.Empty;
-            SemStaticPool.Semaphore.WaitOne();
+            SemStaticPool.SemaphoreProcessing.WaitOne();
             if (!File.Exists(fileName))
                 throw new FileNotFoundException();
             var sortedFileName = fileName + sortedKey;
@@ -19,26 +19,32 @@ namespace Sorter.BigFiles.App
 
             using (var sr = new StreamReader(fileName))
             {
+                Console.WriteLine($"File processing started: {fileName}");
+                SemStaticPool.SemaphoreFileReader.WaitOne();
                 var lines = sr.ReadToEnd()
                     .Split(Environment.NewLine)
                     .Where(_ => !string.IsNullOrWhiteSpace(_))
                     .Select(_ => new SortLine(_.Split(lineSplitSeparator)))
                     .ToArray();
-                Array.Sort(lines);
-                //lines.SortMergePar();
+                SemStaticPool.SemaphoreFileReader.Release();
 
+                lines.SortMergePar();
                 orderedLines = lines
                     .Select(_ => _.ToString())
                     .ToArray();
+
+                Console.WriteLine($"File processing ended: {fileName}");
             }
 
             File.Delete(fileName);
             if (File.Exists(sortedFileName))
                 File.Delete(sortedFileName);
 
+            SemStaticPool.SemaphoreFileReader.WaitOne();
             File.WriteAllLines(sortedFileName, orderedLines);
+            SemStaticPool.SemaphoreFileReader.Release();
 
-            SemStaticPool.Semaphore.Release();
+            SemStaticPool.SemaphoreProcessing.Release();
         }
     }
 }

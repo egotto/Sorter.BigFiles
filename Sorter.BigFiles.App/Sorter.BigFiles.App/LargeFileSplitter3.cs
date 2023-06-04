@@ -1,6 +1,4 @@
-﻿using System.IO;
-using System.Text;
-using System.Text.RegularExpressions;
+﻿using System.Text;
 
 namespace Sorter.BigFiles.App
 {
@@ -46,14 +44,10 @@ namespace Sorter.BigFiles.App
 
                 var lines = 0L;
                 using var sw = File.AppendText(fileName);
-                while(!sr.EndOfStream && lines <= avrLinesInOneFile)
+                while (!sr.EndOfStream && lines <= avrLinesInOneFile)
                 {
                     sw.WriteLine(sr.ReadLine());
                     lines++;
-                    //var pattern = @"([0-9]+)\.\s([A-Za-z0-9 ]+)";
-                    //var replacement = @"$2|$1";
-                    //sw.WriteLine(Regex.Replace(sr.ReadLine(), pattern, replacement));
-                    //lines++;
                 }
             }
 
@@ -61,18 +55,19 @@ namespace Sorter.BigFiles.App
             return noOfCurrentFile;
         }
 
-        private long GetAverageLinesCountPerFile(StreamReader stream, int filesCount)
+        private long GetAverageLinesCountPerFile(StreamReader stream, long filesCount)
         {
-            
-            var bufSize = (long)Math.Ceiling((double)stream.BaseStream.Length / filesCount);
-            var bytesIn100Lines = Encoding.Unicode.GetByteCount(GetFirst1000LinesFromFile(stream));
-            var avrBytesInLine = bytesIn100Lines / 1000;
+
+            var bufSize = stream.BaseStream.Length / filesCount;
+            var bytesIn1000Lines = Encoding.Unicode.GetByteCount(GetFirst1000LinesFromFile(stream)) / 2;
+            var avrBytesInLine = bytesIn1000Lines / 1000;
             return bufSize / avrBytesInLine;
         }
 
         private string GetFirst1000LinesFromFile(StreamReader stream)
         {
             stream.DiscardBufferedData();
+            stream.BaseStream.Seek(0, SeekOrigin.Begin);
             int linesCount = 1000;
             var sb = new StringBuilder();
             while (!stream.EndOfStream && linesCount > 0)
@@ -80,20 +75,21 @@ namespace Sorter.BigFiles.App
                 sb.AppendLine(stream.ReadLine());
                 linesCount--;
             }
+
             stream.DiscardBufferedData();
+            stream.BaseStream.Seek(0, SeekOrigin.Begin);
 
             return sb.ToString();
         }
 
-        private int CalculateOptimalFilesCount(long fileLength)
+        private long CalculateOptimalFilesCount(long fileLength)
         {
-            var processorsCount = Environment.ProcessorCount;
-            int splitFilesCount = 0; // I use the available number of processors for future distributed sorting.
+            int splitFilesCount = 0;
             long outputFileSize = fileLength;
             long maxFileSizeInBytes = _options.MaxFileSizeInMBs * 1024 * 1024;
             while (outputFileSize > maxFileSizeInBytes)
             {
-                splitFilesCount += processorsCount / 2;
+                splitFilesCount += 2;
                 outputFileSize = fileLength / splitFilesCount;
             }
 

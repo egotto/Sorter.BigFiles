@@ -5,7 +5,7 @@
         public SortLine(string[] line)
         {
             if (line.Length != 2)
-                throw new ArgumentException("Invalid line");
+                throw new ArgumentException(string.Format("Invalid parameters: {0}", line.Length));
 
             if (!int.TryParse(line[0], out var number))
                 throw new ArgumentException("Invalid line structure");
@@ -20,7 +20,7 @@
 
         public int CompareTo(object? obj)
         {
-            if (!(obj is SortLine))
+            if (obj is not SortLine)
                 throw new ArgumentException("Invalid parameters");
 
             var result = Text.CompareTo(((SortLine)obj).Text);
@@ -28,6 +28,19 @@
                 return result;
             else
                 return Number.CompareTo(((SortLine)obj).Number);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            switch (obj)
+            {
+                case not SortLine:
+                    throw new ArgumentException("Invalid parameters");
+                case SortLine line:
+                default:
+                    return Text.Equals(line.Text) &&
+                        Number.Equals(line.Number);
+            }
         }
 
         public override string ToString()
