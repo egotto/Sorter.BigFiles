@@ -3,7 +3,7 @@
     public class ConfigOptions
     {
         public bool FileSplitEnabled { get; set; } = true;
-        public int MaxFileSizeInMBs { get; set; } = 1000;
+        public long MaxFileSizeInMBs { get; set; } = 1000;
         public string SplitFilesSubDirectory { get; set; } = "split";
         public string OutputFilesTemplate { get; set; } = "document_{i}.txt";
         public string SourceFileName { get; set; } = "file2sort.txt";
