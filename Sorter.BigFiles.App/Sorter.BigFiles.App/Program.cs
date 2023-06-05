@@ -9,7 +9,7 @@ var filesCount = splitter.StartSplit();
 
 
 var files = Directory.GetFiles(options.OutputSplitFilesDirectory).Where(_ => !_.Contains("sorted")).ToArray();
-var sorter = new SplitFileSorter4();
+var sorter = new SplitFileSorter4(options);
 foreach (var file in files)
 {
     var t = new Thread(new ParameterizedThreadStart(sorter.SortFile));
@@ -24,12 +24,15 @@ while (Directory.GetFiles(options.OutputSplitFilesDirectory).Any(_ => !_.Contain
 
 Thread.Sleep(500);
 
+var merger = new SortedFileMerger(options);
+merger.MergeFiles();
+
 watch.Stop();
 var elapsedMs = watch.Elapsed;
 Console.WriteLine($"Elapsed time is: {elapsedMs:c}");
 
 public static class SemStaticPool
 {
-    public static Semaphore SemaphoreProcessing = new Semaphore(Environment.ProcessorCount / 3, Environment.ProcessorCount / 3);
-    public static Semaphore SemaphoreFileReader = new Semaphore(4, 6);
+    public static Semaphore SemaphoreProcessing = new Semaphore(Environment.ProcessorCount / 2, Environment.ProcessorCount / 2);
+    public static Semaphore SemaphoreFileReader = new Semaphore(4, 4);
 }

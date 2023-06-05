@@ -6,13 +6,26 @@ namespace Sorter.BigFiles.App
     {
         private const string sortedKey = "sorted";
         private const string lineSplitSeparator = ". ";
+        public readonly ConfigOptions _options;
+
+        public SplitFileSorter4(ConfigOptions options)
+        {
+            _options = options;
+        }
 
         public void SortFile(object? filePath)
         {
+            if (!_options.SplitSortingEnabled)
+            {
+                Console.WriteLine("File sorting disabled");
+                return;
+            }
+
             var fileName = filePath as string ?? string.Empty;
             SemStaticPool.SemaphoreProcessing.WaitOne();
             if (!File.Exists(fileName))
                 throw new FileNotFoundException();
+
             var sortedFileName = fileName + sortedKey;
 
             string[] orderedLines = Array.Empty<string>();
