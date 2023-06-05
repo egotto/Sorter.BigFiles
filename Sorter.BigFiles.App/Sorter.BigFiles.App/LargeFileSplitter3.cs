@@ -26,12 +26,15 @@ namespace Sorter.BigFiles.App
 
             uint noOfCurrentFile = 0;
 
-            if (!Directory.Exists(_options.OutputSplitFilesDirectory))
-                Directory.CreateDirectory(_options.OutputSplitFilesDirectory);
+            if (Directory.Exists(_options.OutputSplitFilesDirectory))
+                Directory.Delete(_options.OutputSplitFilesDirectory, true);
+                
+            Directory.CreateDirectory(_options.OutputSplitFilesDirectory);
 
             using var sr = new StreamReader(_options.SourceFilePath);
             var splitFilesCount = CalculateOptimalFilesCount(sr.BaseStream.Length);
             var avrLinesInOneFile = GetAverageLinesCountPerFile(sr, splitFilesCount);
+            StaticValues.AverageLinesCountPerFile = avrLinesInOneFile;
 
             while (!sr.EndOfStream)
             {

@@ -6,8 +6,6 @@ namespace Sorter.BigFiles.App
     internal class SortedFileMerger
     {
         private readonly ConfigOptions _options;
-        public const string sortedKey = "sorted";
-        public const string mergedKey = "merged";
 
         public SortedFileMerger(ConfigOptions configOptions)
         {
@@ -16,7 +14,7 @@ namespace Sorter.BigFiles.App
 
         public void MergeFiles()
         {
-            var files = Directory.GetFiles(_options.OutputSplitFilesDirectory).Where(_ => _.Contains(sortedKey)).ToArray();
+            var files = Directory.GetFiles(_options.OutputSplitFilesDirectory).Where(_ => _.Contains(StaticValues.SortedKey)).ToArray();
             var batchSize = CalculateBatchSize(files.Length);
 
             for(int i=0;i<files.Length;i+=batchSize)
@@ -27,7 +25,7 @@ namespace Sorter.BigFiles.App
                 Thread.Sleep(100);
             }
 
-            while (Directory.GetFiles(Path.Combine(Path.Combine(_options.OutputSplitFilesDirectory, mergedKey))).Count() < files.Length / batchSize)
+            while (Directory.GetFiles(Path.Combine(Path.Combine(_options.OutputSplitFilesDirectory, StaticValues.MergedKey))).Count() < files.Length / batchSize)
             {
                 Thread.Sleep(100);
             }
@@ -43,11 +41,11 @@ namespace Sorter.BigFiles.App
             Console.WriteLine($"Sorted files merging started. Total files to merge: {filesCount}.");
             while (mergedFiles < filesCount)
             {
-                var mergedDirectory = Path.Combine(Path.Combine(_options.OutputSplitFilesDirectory, mergedKey));
+                var mergedDirectory = Path.Combine(Path.Combine(_options.OutputSplitFilesDirectory, StaticValues.MergedKey));
                 if(!Directory.Exists(mergedDirectory))
                     Directory.CreateDirectory(mergedDirectory);
                     
-                var fileName = Path.Combine(mergedDirectory, Path.GetFileName(files[0]).Replace(sortedKey, mergedKey));
+                var fileName = Path.Combine(mergedDirectory, Path.GetFileName(files[0]).Replace(StaticValues.SortedKey, StaticValues.MergedKey));
                 if (File.Exists(fileName))
                     File.Delete(fileName);
 
@@ -58,6 +56,7 @@ namespace Sorter.BigFiles.App
                 }
 
                 var sb = new StringBuilder();
+                long addedLinesCount = 0;
                 while (readers.Any(_=>_.Value != null))
                 {
                     var vals = readers
@@ -67,11 +66,11 @@ namespace Sorter.BigFiles.App
                     Array.Sort(vals, (a,obj)=>a.v.CompareTo(obj.v));
                     var val = vals.First();                        
 
-                    sb.AppendLine(val.v.ToString());
+                    AppendLineToFile(val.v.ToString());
                     readers.First(_ => _.Index == val.i).ReadNext();
                 }
 
-                File.WriteAllText(fileName, sb.ToString());
+                File.AppendAllText(fileName, sb.ToString());
                 
                 foreach(var r in readers)
                 {
@@ -84,6 +83,18 @@ namespace Sorter.BigFiles.App
                 }
 
                 mergedFiles += readers.Length;
+
+                void AppendLineToFile(string line)
+                {
+                    sb.AppendLine(line);
+                    addedLinesCount++;
+                    if(addedLinesCount > StaticValues.AverageLinesCountPerFile)
+                    {
+                        File.AppendAllText(fileName, sb.ToString());
+                        sb.Clear();
+                        addedLinesCount = 0;
+                    }
+                }
                 
             }
             SemStaticPool.SemaphoreFileReader.Release();
@@ -103,43 +114,43 @@ namespace Sorter.BigFiles.App
         }
     }
 
-    internal class SortingReader : IDisposable
-    {
-        private const string _separator = ". ";
-        public SortingReader(string filePath, int index)
-        {
-            if (!File.Exists(filePath))
-                throw new FileNotFoundException(filePath);
+    // internal class SortingReader : IDisposable
+    // {
+    //     private const string _separator = ". ";
+    //     public SortingReader(string filePath, int index)
+    //     {
+    //         if (!File.Exists(filePath))
+    //             throw new FileNotFoundException(filePath);
 
-            Reader = new StreamReader(filePath);
+    //         Reader = new StreamReader(filePath);
 
-            ReadNext();
-            Index = index;
-        }
+    //         ReadNext();
+    //         Index = index;
+    //     }
 
-        public SortLine? Value { get; set; }
+    //     public SortLine? Value { get; set; }
 
-        public StreamReader Reader { get; init; }
-        public int Index { get; set; }
+    //     public StreamReader Reader { get; init; }
+    //     public int Index { get; set; }
 
-        public void ReadNext()
-        {
-            if (!Reader.EndOfStream)
-            {
-                Value = new SortLine(Reader.ReadLine().Split(_separator));
-            }
-            else
-            {
-                Dispose();
-                Value = null;
-                var fName = ((FileStream)Reader.BaseStream).Name;
-                // File.Delete(fName);
-            }
-        }
+    //     public void ReadNext()
+    //     {
+    //         if (!Reader.EndOfStream)
+    //         {
+    //             Value = new SortLine(Reader.ReadLine().Split(_separator));
+    //         }
+    //         else
+    //         {
+    //             Dispose();
+    //             Value = null;
+    //             var fName = ((FileStream)Reader.BaseStream).Name;
+    //             // File.Delete(fName);
+    //         }
+    //     }
 
-        public void Dispose()
-        {
-            Reader.Dispose();
-        }
-    }
+    //     public void Dispose()
+    //     {
+    //         Reader.Dispose();
+    //     }
+    // }
 }

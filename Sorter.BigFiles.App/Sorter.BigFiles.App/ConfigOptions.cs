@@ -2,8 +2,8 @@
 {
     public class ConfigOptions
     {
-        public bool FileSplitEnabled { get; set; } = false;
-        public bool SplitSortingEnabled { get; set; } = false;
+        public bool FileSplitEnabled { get; set; } = true;
+        public bool SplitSortingEnabled { get; set; } = true;
         public long MaxFileSizeInMBs { get; set; } = 100;
         public string SplitFilesSubDirectory { get; set; } = "split";
         public string OutputFilesTemplate { get; set; } = "document_{i}.txt";

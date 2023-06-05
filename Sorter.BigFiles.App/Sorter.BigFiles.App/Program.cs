@@ -24,8 +24,8 @@ while (Directory.GetFiles(options.OutputSplitFilesDirectory).Any(_ => !_.Contain
 
 Thread.Sleep(500);
 
-var merger = new SortedFileMerger(options);
-merger.MergeFiles();
+var merger = new SortedFileMerger2(options);
+var result = merger.MergeFiles();
 
 watch.Stop();
 var elapsedMs = watch.Elapsed;

@@ -4,8 +4,6 @@ namespace Sorter.BigFiles.App
 {
     internal class SplitFileSorter4
     {
-        private const string sortedKey = "sorted";
-        private const string lineSplitSeparator = ". ";
         public readonly ConfigOptions _options;
 
         public SplitFileSorter4(ConfigOptions options)
@@ -26,7 +24,7 @@ namespace Sorter.BigFiles.App
             if (!File.Exists(fileName))
                 throw new FileNotFoundException();
 
-            var sortedFileName = fileName + sortedKey;
+            var sortedFileName = fileName + StaticValues.SortedKey;
 
             string[] orderedLines = Array.Empty<string>();
 
@@ -37,11 +35,12 @@ namespace Sorter.BigFiles.App
                 var lines = sr.ReadToEnd()
                     .Split(Environment.NewLine)
                     .Where(_ => !string.IsNullOrWhiteSpace(_))
-                    .Select(_ => new SortLine(_.Split(lineSplitSeparator)))
+                    .Select(_ => new SortLine(_.Split(StaticValues.LineSplitSeparator)))
                     .ToArray();
                 SemStaticPool.SemaphoreFileReader.Release();
 
-                lines.SortMergePar();
+                Array.Sort(lines);
+                // lines.SortMergePar();
                 orderedLines = lines
                     .Select(_ => _.ToString())
                     .ToArray();
