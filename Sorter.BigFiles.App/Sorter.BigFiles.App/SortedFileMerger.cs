@@ -6,6 +6,8 @@ namespace Sorter.BigFiles.App
     internal class SortedFileMerger
     {
         private readonly ConfigOptions _options;
+        public const string sortedKey = "sorted";
+        public const string mergedKey = "merged";
 
         public SortedFileMerger(ConfigOptions configOptions)
         {
@@ -14,39 +16,45 @@ namespace Sorter.BigFiles.App
 
         public void MergeFiles()
         {
-            var files = Directory.GetFiles(_options.OutputSplitFilesDirectory).Where(_ => _.Contains("sorted")).ToArray();
-            MergeSelectedFilesIntoOne(files);
-            // foreach (var file in files)
-            // {
-            //     var t = new Thread(new ParameterizedThreadStart(sorter.SortFile));
-            //     t.Start(file);
-            //     Thread.Sleep(100);
-            // }
+            var files = Directory.GetFiles(_options.OutputSplitFilesDirectory).Where(_ => _.Contains(sortedKey)).ToArray();
+            var batchSize = CalculateBatchSize(files.Length);
+
+            for(int i=0;i<files.Length;i+=batchSize)
+            {
+                var toBeMerging = files.Skip(i).Take(batchSize).ToArray();
+                var t = new Thread(new ParameterizedThreadStart(MergeSelectedFilesIntoOne));
+                t.Start(toBeMerging);
+                Thread.Sleep(100);
+            }
+
+            while (Directory.GetFiles(Path.Combine(Path.Combine(_options.OutputSplitFilesDirectory, mergedKey))).Count() < files.Length / batchSize)
+            {
+                Thread.Sleep(100);
+            }
         }
 
-        public void MergeSelectedFilesIntoOne(string[] files)
+        public void MergeSelectedFilesIntoOne(object? filesArray)
         {
+            var files = filesArray as string[] ?? Array.Empty<string>();
+            SemStaticPool.SemaphoreFileReader.WaitOne();
+            Console.WriteLine($"Started merging files");
             var filesCount = files.Length;
             var mergedFiles = 0;
-            var batchIndex = 0;
             Console.WriteLine($"Sorted files merging started. Total files to merge: {filesCount}.");
             while (mergedFiles < filesCount)
             {
-                batchIndex++;
-                Console.WriteLine($"Batch #{batchIndex} merging");
-                var mergedDirectory = Path.Combine(Path.Combine(_options.OutputSplitFilesDirectory, "merged"));
+                var mergedDirectory = Path.Combine(Path.Combine(_options.OutputSplitFilesDirectory, mergedKey));
                 if(!Directory.Exists(mergedDirectory))
                     Directory.CreateDirectory(mergedDirectory);
                     
-                var fileName = Path.Combine(mergedDirectory, _options.OutputFilesTemplate.Replace("{i}", $"{batchIndex}"));
+                var fileName = Path.Combine(mergedDirectory, Path.GetFileName(files[0]).Replace(sortedKey, mergedKey));
                 if (File.Exists(fileName))
                     File.Delete(fileName);
 
-                var files10 = files.Skip(mergedFiles).Take(4).ToArray();
-                var readers = new SortingReader[files10.Length];
-                for (int i = 0; i < files10.Length; i++)
+                var readers = new SortingReader[files.Length];
+                for (int i = 0; i < files.Length; i++)
                 {
-                    readers[i] = new SortingReader(files10[i], i);
+                    readers[i] = new SortingReader(files[i], i);
                 }
 
                 var sb = new StringBuilder();
@@ -76,15 +84,23 @@ namespace Sorter.BigFiles.App
                 }
 
                 mergedFiles += readers.Length;
-                Console.WriteLine($"Batch #{batchIndex} merged");
+                
             }
+            SemStaticPool.SemaphoreFileReader.Release();
+            Console.WriteLine($"End merging files");
         }
 
-        // private int CalculateBatchSize(int filesCount)
-        // {
-        //     var processorCount = Environment.ProcessorCount;
-        //     return processorCount / 4;
-        // }
+        private int CalculateBatchSize(int filesCount)
+        {
+            var processorCount = Environment.ProcessorCount;
+            var batchSize = 3;
+            while(filesCount % batchSize != 0)
+            {
+                batchSize = batchSize < 5 ? batchSize + 1 : 2;
+            }
+
+            return batchSize;
+        }
     }
 
     internal class SortingReader : IDisposable
