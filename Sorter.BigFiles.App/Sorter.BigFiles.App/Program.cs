@@ -1,38 +1,23 @@
-﻿// See https://aka.ms/new-console-template for more information
-using Sorter.BigFiles.App;
+﻿using Sorter.BigFiles.App;
 
 var watch = System.Diagnostics.Stopwatch.StartNew();
-
 var options = new ConfigOptions();
-var splitter = new LargeFileSplitter3(options);
+
+var splitter = new LargeFileSplitter(options);
 var filesCount = splitter.StartSplit();
 
-
-var files = Directory.GetFiles(options.OutputSplitFilesDirectory).Where(_ => !_.Contains("sorted")).ToArray();
-var sorter = new SplitFileSorter4(options);
-foreach (var file in files)
-{
-    var t = new Thread(new ParameterizedThreadStart(sorter.SortFile));
-    t.Start(file);
-    Thread.Sleep(100);
-}
-
-while (Directory.GetFiles(options.OutputSplitFilesDirectory).Any(_ => !_.Contains("sorted")))
-{
-    Thread.Sleep(100);
-}
-
-Thread.Sleep(500);
-
+var sorter = new SplitFileSorter(options);
+sorter.SortFiles();
 var merger = new SortedFileMerger2(options);
 var result = merger.MergeFiles();
 
+Thread.Sleep(100);
 watch.Stop();
 var elapsedMs = watch.Elapsed;
 Console.WriteLine($"Elapsed time is: {elapsedMs:c}");
+Console.WriteLine($"Result file: {result}");
 
 public static class SemStaticPool
 {
-    public static Semaphore SemaphoreProcessing = new Semaphore(Environment.ProcessorCount / 2, Environment.ProcessorCount / 2);
-    public static Semaphore SemaphoreFileReader = new Semaphore(4, 4);
+    public static Semaphore SemaphoreProcessing = new Semaphore((int)Math.Ceiling(Environment.ProcessorCount * 0.75), (int)Math.Ceiling(Environment.ProcessorCount * 0.75));
 }

@@ -1,112 +1,102 @@
 ﻿using System.Text;
 
-namespace Sorter.BigFiles.App;
-
-/// <summary>
-/// Use it for splitting big files into smaller parts
-/// </summary>
-public class LargeFileSplitter
+namespace Sorter.BigFiles.App
 {
-    private readonly ConfigOptions _options;
-
-    public LargeFileSplitter(ConfigOptions configOptions)
+    internal class LargeFileSplitter
     {
-        _options = configOptions;
-    }
+        private readonly ConfigOptions _options;
 
-    public uint StartSplit()
-    {
-        if (!_options.FileSplitEnabled)
+        public LargeFileSplitter(ConfigOptions configOptions)
         {
-            Console.WriteLine("Large file splitting disabled");
-            return 0;
+            _options = configOptions;
         }
 
-        if (!File.Exists(_options.SourceFilePath))
-            throw new FileNotFoundException(_options.SourceFilePath);
+        public uint StartSplit()
+        {
+            if (!_options.FileSplitEnabled)
+            {
+                Console.WriteLine("Large file splitting disabled");
+                return 0;
+            }
 
-        Console.WriteLine("Start splitting dataset file");
+            if (!File.Exists(_options.SourceFilePath))
+                throw new FileNotFoundException(_options.SourceFilePath);
 
-        uint noOfCurrentFile = 0;
+            Console.WriteLine("Start splitting dataset file");
 
-        if (!Directory.Exists(_options.OutputSplitFilesDirectory))
+            uint noOfCurrentFile = 0;
+
+            if (Directory.Exists(_options.OutputSplitFilesDirectory))
+                Directory.Delete(_options.OutputSplitFilesDirectory, true);
+
             Directory.CreateDirectory(_options.OutputSplitFilesDirectory);
 
-        using var fs = File.Open(
-            _options.SourceFilePath,
-            FileMode.Open,
-            FileAccess.Read);
-        using var bs = new BufferedStream(fs);
+            using var sr = new StreamReader(_options.SourceFilePath);
+            var splitFilesCount = CalculateOptimalFilesCount(sr.BaseStream.Length);
+            var avrLinesInOneFile = GetAverageLinesCountPerFile(sr, splitFilesCount);
+            StaticValues.AverageLinesCountPerFile = avrLinesInOneFile;
 
-        var splitFilesCount = CalculateOptimalFilesCount(fs.Length);
-        var bufSize = (ulong)Math.Ceiling((double)fs.Length / splitFilesCount);
-        var buffer = new byte[bufSize];
-        var ms = new MemoryStream(buffer);
-        var sr = new StreamReader(ms);
-        Console.WriteLine(
-            $"Approximate size of generated files will be = {splitFilesCount} * {bufSize / (1024 * 1024)}MB");
-        var currentLine = new StringBuilder();
-        while (bs.Read(buffer, 0, (int)bufSize) != 0)
-        {
-            noOfCurrentFile++;
-            Console.Write($"\r Write to file {noOfCurrentFile}/{splitFilesCount}...");
-            var fileName = Path.Combine(_options.OutputSplitFilesDirectory,
-                _options.OutputFilesTemplate.Replace("{i}", noOfCurrentFile.ToString()));
-            if (File.Exists(fileName))
-                File.Delete(fileName);
-
-            using var w = File.AppendText(fileName);
-            ms.Seek(0, SeekOrigin.Begin);
             while (!sr.EndOfStream)
             {
-                var currentRecord = LineFormatter(sr, currentLine);
-                if (currentRecord != null)
+                noOfCurrentFile++;
+                Console.Write($"\r Write to file {noOfCurrentFile}/{splitFilesCount}...");
+                var fileName = Path.Combine(_options.OutputSplitFilesDirectory,
+                    _options.OutputFilesTemplate.Replace("{i}", noOfCurrentFile.ToString()));
+                if (File.Exists(fileName))
+                    File.Delete(fileName);
+
+                var lines = 0L;
+                using var sw = File.AppendText(fileName);
+                while (!sr.EndOfStream && lines <= avrLinesInOneFile)
                 {
-                    w.WriteLine(currentRecord);
+                    sw.WriteLine(sr.ReadLine());
+                    lines++;
                 }
             }
+
+            Console.WriteLine();
+            return noOfCurrentFile;
         }
 
-        return noOfCurrentFile;
-
-        static string? LineFormatter(TextReader streamReader, StringBuilder currentLineBuilder)
+        private long GetAverageLinesCountPerFile(StreamReader stream, long filesCount)
         {
-            var charBuffer = new char[1];
 
-            while (streamReader.Read(charBuffer, 0, 1) > 0)
+            var bufSize = stream.BaseStream.Length / filesCount;
+            var bytesIn1000Lines = Encoding.Unicode.GetByteCount(GetFirst1000LinesFromFile(stream)) / 2;
+            var avrBytesInLine = bytesIn1000Lines / 1000;
+            return bufSize / avrBytesInLine;
+        }
+
+        private string GetFirst1000LinesFromFile(StreamReader stream)
+        {
+            stream.DiscardBufferedData();
+            stream.BaseStream.Seek(0, SeekOrigin.Begin);
+            int linesCount = 1000;
+            var sb = new StringBuilder();
+            while (!stream.EndOfStream && linesCount > 0)
             {
-                if (charBuffer[0].Equals('\n'))
-                {
-                    var result = currentLineBuilder.ToString();
-                    currentLineBuilder.Clear();
-
-                    if (result.EndsWith('\r'))
-                    {
-                        result = result.Substring(0, result.Length - 1);
-                    }
-
-                    return result;
-                }
-
-                currentLineBuilder.Append(charBuffer[0]);
+                sb.AppendLine(stream.ReadLine());
+                linesCount--;
             }
 
-            return null;
-        }
-    }
+            stream.DiscardBufferedData();
+            stream.BaseStream.Seek(0, SeekOrigin.Begin);
 
-    private int CalculateOptimalFilesCount(long fileLength)
-    {
-        var processorsCount = Environment.ProcessorCount;
-        int splitFilesCount = 0; // I use the available number of processors for future distributed sorting.
-        long outputFileSize = fileLength;
-        long maxFileSizeInBytes = _options.MaxFileSizeInMBs * 1024 * 1024;
-        while (outputFileSize > maxFileSizeInBytes)
+            return sb.ToString();
+        }
+
+        private long CalculateOptimalFilesCount(long fileLength)
         {
-            splitFilesCount += processorsCount;
-            outputFileSize = fileLength / splitFilesCount;
-        }
+            int splitFilesCount = 0;
+            long outputFileSize = fileLength;
+            long maxFileSizeInBytes = _options.MaxFileSizeInMBs * 1024 * 1024;
+            while (outputFileSize > maxFileSizeInBytes)
+            {
+                splitFilesCount += 2;
+                outputFileSize = fileLength / splitFilesCount;
+            }
 
-        return splitFilesCount;
+            return splitFilesCount;
+        }
     }
 }

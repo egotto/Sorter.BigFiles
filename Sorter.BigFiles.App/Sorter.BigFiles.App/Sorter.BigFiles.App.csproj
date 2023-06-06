@@ -8,8 +8,4 @@
     <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="HPCsharp" Version="3.16.6" />
-  </ItemGroup>
-
 </Project>

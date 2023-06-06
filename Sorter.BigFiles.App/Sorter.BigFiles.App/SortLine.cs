@@ -43,6 +43,11 @@
             }
         }
 
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Number, Text);
+        }
+
         public override string ToString()
         {
             return string.Format("{0}. {1}", Number, Text);
