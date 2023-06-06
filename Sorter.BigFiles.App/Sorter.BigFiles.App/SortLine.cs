@@ -14,6 +14,18 @@
             Text = line[1];
         }
 
+        public SortLine(string line):this(ValidateAndSplitStringLine(line))
+        {
+        }
+
+        private static string[] ValidateAndSplitStringLine(string line)
+        {
+            if(string.IsNullOrEmpty(line))
+                throw new ArgumentNullException(nameof(line));
+            
+            return line.Split(StaticValues.LineSplitSeparator);
+        }
+
         public int Number { get; set; }
 
         public string Text { get; set; }

@@ -5,6 +5,7 @@
         public bool FileSplitEnabled { get; set; } = true;
         public bool SplitSortingEnabled { get; set; } = true;
         public long MaxFileSizeInMBs { get; set; } = 50;
+        public long AvailableRamInMBs { get; set; } = 5000;
         public string SplitFilesSubDirectory { get; set; } = "split";
         public string OutputFilesTemplate { get; set; } = "document_{i}.txt";
         public string SourceFileName { get; set; } = "file2sort1.txt";

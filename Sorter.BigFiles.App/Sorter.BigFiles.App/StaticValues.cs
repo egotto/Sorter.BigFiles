@@ -10,6 +10,7 @@ namespace Sorter.BigFiles.App
         public static string SortedKey = "sorted";
         public static string MergedKey = "merged";
         public static long AverageLinesCountPerFile = 0;
+        public static long AverageLinesCountPerThread = 0;
         public static string LineSplitSeparator = ". ";
     }
 }

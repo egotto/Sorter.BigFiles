@@ -77,6 +77,7 @@ namespace Sorter.BigFiles.App
                     .Where(_ => _.Value != null)
                     .Select(_ => new { v = _.Value, i = _.Index })
                     .ToArray();
+                    
                 Array.Sort(vals, (a, obj) => a.v.CompareTo(obj.v));
                 var val = vals.First();
 
