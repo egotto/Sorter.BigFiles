@@ -2,6 +2,14 @@
 These are scripts for sorting files. For large files of 10 GB or more.
 Here we have two applications - Generator and App. 
 
+# Plans for future
+1. Add Docker support.
+1. Write tests for Application.
+1. Change Sorter from the default Array.Sort to custom with multithreading support (take a look to [HPCsharp](https://github.com/DragonSpit/HPCsharp) library).
+1. Remove 2-step serialization-deserialization between sorting and merging files.
+1. Return to one of implementation with [directly reading FileStream](https://github.com/egotto/Sorter.BigFiles/blob/9fb7ed2efa867213e30dc161a755b5fd51aa5805/Sorter.BigFiles.App/Sorter.BigFiles.App/LargeFileSplitter2.cs#LL40C13-L40C78) into different threads and saving already sorted files.
+1. Remove sequential sorting in favor of simultaneously processing all files as they are processed.
+
 # Requirements  
 1. A machine with a minimum of 8 GB of RAM and 2 CPUs is recommended to run. The storage speed directly affects the script execution speed.
 2. Dotnet SDK (7+ version)
