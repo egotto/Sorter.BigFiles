@@ -54,7 +54,7 @@ internal class SplitFileSorter
 
         Array.Sort(lines);
 
-        var savingEnumerable = lines.Select(_ => _.ToString());
+        var savingEnumerable = lines.Select(_ => _.SerializeToString());
         var sortedFileName = Path.Combine(_options.OutputSplitFilesDirectory, Guid.NewGuid().ToString());
 
         File.Delete(fileName);

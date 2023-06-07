@@ -81,7 +81,7 @@ internal class SortedFileMerger
             Array.Sort(values, (a, obj) => a.v!.CompareTo(obj.v));
             var val = values.First();
 
-            AppendLineToFile(val.v!.ToString());
+            AppendLineToFile(val.v!.SerializeToString());
             readers.First(_ => _.Index == val.i).ReadNext();
         }
 

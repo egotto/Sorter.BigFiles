@@ -1,69 +1,55 @@
 ﻿namespace Sorter.BigFiles.App.Models;
 
-internal class SortLine : IComparable
+internal class SortLine : SortLineBase, ISortLine<SortLine>, IHaveSortableStructure
 {
-    public SortLine(string[] line)
-    {
-        if (line.Length != 2)
-            throw new ArgumentException(string.Format("Invalid parameters: {0}", line.Length));
-
-        if (!int.TryParse(line[0], out var number))
-            throw new ArgumentException("Invalid line structure");
-
-        Number = number;
-        Text = line[1];
-    }
-
-    public SortLine(string line) : this(ValidateAndSplitStringLine(line))
-    {
-    }
-
-    private static string[] ValidateAndSplitStringLine(string line)
+    public SortLine(string line) : base(line)
     {
         if (string.IsNullOrEmpty(line))
             throw new ArgumentNullException(nameof(line));
 
-        return line.Split(LineSplitSeparator);
+        var lines = line.Split(IHaveSortableStructure.SplitSeparator);
+
+        if (lines.Length != 2)
+            throw new ArgumentException(string.Format("Invalid parameters: {0}", lines.Length));
+
+        if (!int.TryParse(lines[0], out var number))
+            throw new ArgumentException("Invalid line structure");
+
+        Number = number;
+        Text = lines[1];
     }
 
-    private static readonly string LineSplitSeparator = ". ";
+    public int Number { get; init; }
 
-    public int Number { get; set; }
+    public string Text { get; init; }
 
-    public string Text { get; set; }
-
-    public int CompareTo(object? obj)
+    public int CompareTo(SortLine? other)
     {
-        if (obj is not SortLine)
-            throw new ArgumentException("Invalid parameters");
+        if (other is null)
+            throw new ArgumentNullException(nameof(other));
 
-        var result = Text.CompareTo(((SortLine)obj).Text);
+        var result = Text.CompareTo(((SortLine)other).Text);
         if (result != 0)
             return result;
         else
-            return Number.CompareTo(((SortLine)obj).Number);
+            return Number.CompareTo(((SortLine)other).Number);
     }
 
-    public override bool Equals(object? obj)
+    public string SerializeToString()
     {
-        switch (obj)
+        return string.Format("{0}. {1}", Number, Text);
+    }
+
+    public bool Equals(SortLine? other)
+    {
+        switch (other)
         {
-            case not SortLine:
-                throw new ArgumentException("Invalid parameters");
+            case null:
+                throw new ArgumentNullException(nameof(other));
             case SortLine line:
             default:
                 return Text.Equals(line.Text) &&
                     Number.Equals(line.Number);
         }
-    }
-
-    public override int GetHashCode()
-    {
-        return HashCode.Combine(Number, Text);
-    }
-
-    public override string ToString()
-    {
-        return string.Format("{0}. {1}", Number, Text);
     }
 }

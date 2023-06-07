@@ -29,6 +29,15 @@ In the configuration file, you can (and should before the first run) configure t
   - _SourceFileDirectory_ - directory with the source file
   - _OutputFilesDirectory_ - directory with output and temporary files after processing (will be created if it does not exist).
 
+## How to change the original format of strings for sorting
+As mentioned above, one of the advantages of this approach is its versatility. I have not optimized the algorithm for one particular string format. I've optimized it for versatility. To use a different source line format, modify/replace the `Models/SortLine.cs` file and `IHaveSortableStructure` interface that stored in the `Models/ISortLine.cs`.
+The class SortLine must inherit the interfaces ISortLine<T>, IHaveSortableStructure and the base abstract class SortLineBase.
+The IHaveSortableStructure interface contains the proposed string structure for sorting.
+To implement another structure, you need:
+1. Implement a constructor that takes a string as input and initializes properties. In fact, this is a deserialization of a string.
+2. Implement the `IComparable<T>` and `IEquatable<T>` interfaces for efficient sorting using Array.Sort().
+3. Implement the `SerialazeToString()` method. This is the reverse serialization of an object into a string for later saving to a file.
+
 
 ## Structure and principle of work.
 The algorithm works as follows. 
@@ -42,3 +51,17 @@ The launch is best done after building the application in the release configurat
 or  
 `dotnet publish -c Release -r linux-x64 -p:PublishSingleFile=true -o <output directory> --self-contained false`  
 TBD: Dockerfile will be added
+
+## Direct launch of built application
+0. Check configuration in the _appsettings.json_ file.
+1. Got to the directory with the _*.sln_ file
+2. Run `dotnet publish -c Release -r win-x64 -p:PublishSingleFile=true -o .\output\ --self-contained false`  
+or `dotnet publish -c Release -r linux-x64 -p:PublishSingleFile=true -o ./output/ --self-contained false`
+3. Go to the output directory and start application in console:
+   - `./Sorter.BigFiles.App` if you in Linux
+   - `./Sorter.BigFiles.App.exe` if you in Windows
+   - `dotnet Sorter.BigFiles.App.dll` if you have dotnet runtime installed
+4. Wait for end of processing. The processing will be reflected in the console.
+
+## Launch as a Docker container
+TBD
