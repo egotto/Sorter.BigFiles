@@ -1,110 +1,101 @@
-using System.Text;
 using Sorter.BigFiles.App.Models;
+using System.Text;
 
-namespace Sorter.BigFiles.App.Services
+namespace Sorter.BigFiles.App.Services;
+
+public class SortedFileMerger
 {
-    internal class SortedFileMerger
+    private readonly ConfigOptions _options;
+
+    public SortedFileMerger(ConfigOptions configOptions)
     {
-        private readonly ConfigOptions _options;
+        _options = configOptions;
+    }
 
-        public SortedFileMerger(ConfigOptions configOptions)
+    public string MergeFiles()
+    {
+        var files = Directory
+            .GetFiles(_options.OutputSplitFilesDirectory);
+
+        var resultFile = MergeSplitFiles(files);
+
+        if (resultFile.Length == 1)
+            return resultFile[0];
+
+        throw new Exception();
+    }
+
+    private string[] MergeSplitFiles(string[] files)
+    {
+        if (files.Length <= 1)
+            return files;
+
+        var threads = new List<Thread>();
+        for (int i = 0; i < files.Length; i += 3)
         {
-            _options = configOptions;
+            var toBeMerging = files.Skip(i).Take(3).ToArray();
+            if (toBeMerging.Length == 1)
+                break;
+
+            var t = new Thread(new ParameterizedThreadStart(MergeSelectedFilesIntoOne));
+            t.Start(toBeMerging);
+            threads.Add(t);
+            Thread.Sleep(100);
         }
 
-        public string MergeFiles()
+        while (threads.Any(_ => _.IsAlive))
         {
-            var files = Directory
-                .GetFiles(_options.OutputSplitFilesDirectory);
-
-            var resultFile = MergeSplitFiles(files);
-
-            if (resultFile.Length == 1)
-                return resultFile[0];
-
-            throw new Exception();
+            Thread.Sleep(100);
         }
 
-        private string[] MergeSplitFiles(string[] files)
+        return MergeSplitFiles(Directory.GetFiles(_options.OutputSplitFilesDirectory));
+    }
+
+    private void MergeSelectedFilesIntoOne(object? filesArray)
+    {
+        var files = filesArray as string[] ?? Array.Empty<string>();
+        SemStaticPool.SemaphoreProcessing.WaitOne();
+        Console.WriteLine($"Started merging {files.Length} files in Thread#: {Thread.CurrentThread.ManagedThreadId}");
+
+        var outputFileName = Path.Combine(_options.OutputSplitFilesDirectory, Guid.NewGuid().ToString() + ".txt");
+        if (File.Exists(outputFileName))
+            File.Delete(outputFileName);
+
+        List<SortingReader> readers = new List<SortingReader>(files.Length);
+
+        Parallel.ForEach(files, (file, state, index) => readers.Add(new SortingReader(file, (int)index)));
+
+        var sb = new StringBuilder();
+        long addedLinesCount = 0;
+
+        while (readers.Any(_ => _.Value != null))
         {
-            if (files.Length <= 1)
-                return files;
+            var vals = readers
+                .Where(_ => _.Value != null)
+                .Select(_ => new { v = _.Value, i = _.Index })
+                .ToArray();
 
-            var threads = new List<Thread>();
-            for (int i = 0; i < files.Length; i += 3)
-            {
-                var toBeMerging = files.Skip(i).Take(3).ToArray();
-                if (toBeMerging.Length == 1)
-                    break;
+            Array.Sort(vals, (a, obj) => a.v.CompareTo(obj.v));
+            var val = vals.First();
 
-                var t = new Thread(new ParameterizedThreadStart(MergeSelectedFilesIntoOne));
-                t.Start(toBeMerging);
-                threads.Add(t);
-                Thread.Sleep(100);
-            }
-
-            while (threads.Any(_ => _.IsAlive))
-            {
-                Thread.Sleep(100);
-            }
-
-            return MergeSplitFiles(Directory.GetFiles(_options.OutputSplitFilesDirectory));
+            AppendLineToFile(val.v.ToString());
+            readers.First(_ => _.Index == val.i).ReadNext();
         }
 
-        private void MergeSelectedFilesIntoOne(object? filesArray)
+        File.AppendAllText(outputFileName, sb.ToString());
+
+        void AppendLineToFile(string line)
         {
-            var files = filesArray as string[] ?? Array.Empty<string>();
-            SemStaticPool.SemaphoreProcessing.WaitOne();
-            Console.WriteLine($"Started merging {files.Length} files in Thread#: {Thread.CurrentThread.ManagedThreadId}");
-
-            var outputFileName = Path.Combine(_options.OutputSplitFilesDirectory, Guid.NewGuid().ToString() + ".txt");
-            if (File.Exists(outputFileName))
-                File.Delete(outputFileName);
-
-            var readers = new SortingReader[files.Length];
-            for (int i = 0; i < files.Length; i++)
+            sb.AppendLine(line);
+            if (addedLinesCount++ > StaticValues.AverageLinesCountPerFile)
             {
-                readers[i] = new SortingReader(files[i], i);
+                File.AppendAllText(outputFileName, sb.ToString());
+                sb.Clear();
+                addedLinesCount = 0;
             }
-
-            var sb = new StringBuilder();
-            long addedLinesCount = 0;
-
-            while (readers.Any(_ => _.Value != null))
-            {
-                var vals = readers
-                    .Where(_ => _.Value != null)
-                    .Select(_ => new { v = _.Value, i = _.Index })
-                    .ToArray();
-                Array.Sort(vals, (a, obj) => a.v.CompareTo(obj.v));
-                var val = vals.First();
-
-                AppendLineToFile(val.v.ToString());
-                readers.First(_ => _.Index == val.i).ReadNext();
-            }
-
-            File.AppendAllText(outputFileName, sb.ToString());
-
-            foreach (var r in readers.Where(_ => _.Value != null))
-            {
-                var fName = ((FileStream)r.Reader.BaseStream).Name;
-                r.Reader.Close();
-                throw new AggregateException($"File {fName} was not read till the end...");
-            }
-
-            void AppendLineToFile(string line)
-            {
-                sb.AppendLine(line);
-                if (addedLinesCount++ > StaticValues.AverageLinesCountPerFile)
-                {
-                    File.AppendAllText(outputFileName, sb.ToString());
-                    sb.Clear();
-                    addedLinesCount = 0;
-                }
-            }
-
-            SemStaticPool.SemaphoreProcessing.Release();
-            Console.WriteLine($"Ended merging files in Thread#: {Thread.CurrentThread.ManagedThreadId}");
         }
+
+        SemStaticPool.SemaphoreProcessing.Release();
+        Console.WriteLine($"Ended merging files in Thread#: {Thread.CurrentThread.ManagedThreadId}");
     }
 }

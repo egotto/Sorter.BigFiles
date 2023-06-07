@@ -1,42 +1,36 @@
-namespace Sorter.BigFiles.App.Models
+namespace Sorter.BigFiles.App.Models;
+
+internal class SortingReader
 {
-    internal class SortingReader : IDisposable
+    private readonly IEnumerator<string> _lines;
+    private readonly string _filePath;
+
+    public SortingReader(string filePath, int index)
     {
-        private const string _separator = ". ";
-        public SortingReader(string filePath, int index)
+        if (!File.Exists(filePath))
+            throw new FileNotFoundException(filePath);
+
+        Index = index;
+        _lines = File.ReadLines(filePath).GetEnumerator();
+        _filePath = filePath;
+
+        ReadNext();
+    }
+
+    public SortLine? Value { get; set; }
+
+    public int Index { get; set; }
+
+    public void ReadNext()
+    {
+        if (_lines.MoveNext())
         {
-            if (!File.Exists(filePath))
-                throw new FileNotFoundException(filePath);
-
-            Index = index;
-            Reader = new StreamReader(filePath);
-
-            ReadNext();
+            Value = new SortLine(_lines.Current);
         }
-
-        public SortLine? Value { get; set; }
-
-        public StreamReader Reader { get; init; }
-        public int Index { get; set; }
-
-        public void ReadNext()
+        else
         {
-            if (!Reader.EndOfStream)
-            {
-                Value = new SortLine(Reader.ReadLine().Split(_separator));
-            }
-            else
-            {
-                Dispose();
-                Value = null;
-                var fName = ((FileStream)Reader.BaseStream).Name;
-                File.Delete(fName);
-            }
-        }
-
-        public void Dispose()
-        {
-            Reader.Dispose();
+            Value = null;
+            File.Delete(_filePath);
         }
     }
 }

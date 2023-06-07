@@ -1,162 +1,77 @@
-﻿using System.Text;
-using HPCsharp;
-using Sorter.BigFiles.App.Models;
+﻿using Sorter.BigFiles.App.Models;
+using System.Text;
 
-namespace Sorter.BigFiles.App.Services
+namespace Sorter.BigFiles.App.Services;
+
+internal class SplitFileSorter
 {
-    internal class SplitFileSorter
+    public readonly ConfigOptions _options;
+
+    public SplitFileSorter(ConfigOptions options)
     {
-        public readonly ConfigOptions _options;
+        _options = options;
+    }
 
-        public SplitFileSorter(ConfigOptions options)
+    public void SortFiles()
+    {
+#if DEBUG
+        if (!_options.SplitSortingEnabled)
         {
-            _options = options;
+            Console.WriteLine("File sorting disabled");
+            return;
+        }
+#endif
+
+        var files = Directory.GetFiles(_options.OutputSplitFilesDirectory).Where(_ => !_.Contains("sorted")).ToArray();
+        var threads = new List<Thread>();
+        foreach (var file in files)
+        {
+            var t = new Thread(new ParameterizedThreadStart(SortFile));
+            t.Start(file);
+            threads.Add(t);
+            Thread.Sleep(100);
         }
 
-        public void SortFiles()
+        while (threads.Any(_ => _.IsAlive))
         {
-            if (!_options.SplitSortingEnabled)
-            {
-                Console.WriteLine("File sorting disabled");
-                return;
-            }
-
-            var files = Directory.GetFiles(_options.OutputSplitFilesDirectory).Where(_ => !_.Contains("sorted")).ToArray();
-            var threads = new List<Thread>();
-            foreach (var file in files)
-            {
-                var t = new Thread(new ParameterizedThreadStart(SortFile));
-                t.Start(file);
-                threads.Add(t);
-                Thread.Sleep(100);
-            }
-
-            while (threads.Any(_ => _.IsAlive))
-            {
-                Thread.Sleep(100);
-            }
+            Thread.Sleep(100);
         }
+    }
 
-        public void SortLinesAndSave(IEnumerable<string> unsortedFileStream)
-        {
-            var threads = new List<Thread>();
-            if (StaticValues.AverageLinesCountPerThread == -1)
-            {
-                var t = new Thread(new ParameterizedThreadStart(SortLinesAndSaveToFile));
-                t.Start(unsortedFileStream);
-                threads.Add(t);
-                Thread.Sleep(100);
-            }
-            else
-            {
-                long readLines = 0;
-                string[] buffer = new string[StaticValues.AverageLinesCountPerThread];
-                foreach (var line in unsortedFileStream)
-                {
-                    SemStaticPool.SemaphoreProcessing.WaitOne();
-                    buffer[readLines++] = line;
-                    SemStaticPool.SemaphoreProcessing.Release();
-                    if (readLines < StaticValues.AverageLinesCountPerThread)
-                        continue;
+    private void SortFile(object? filePath)
+    {
+        var fileName = filePath as string ?? string.Empty;
+        SemStaticPool.SemaphoreProcessing.WaitOne();
+        if (!File.Exists(fileName))
+            throw new FileNotFoundException();
 
-                    var t = new Thread(new ParameterizedThreadStart(SortLinesAndSaveToFile));
-                    t.Start(buffer);
-                    threads.Add(t);
-                    Thread.Sleep(100);
-                    buffer = new string[StaticValues.AverageLinesCountPerThread];
-                    readLines = 0;
-                }
+        Console.WriteLine($"File processing started: {fileName}");
 
-                if (buffer.Any())
-                {
-                    var t = new Thread(new ParameterizedThreadStart(SortLinesAndSaveToFile));
-                    t.Start(buffer);
-                    threads.Add(t);
-                    Thread.Sleep(100);
-                    buffer = new string[StaticValues.AverageLinesCountPerThread];
-                }
-            }
-
-            while (threads.Any(_ => _.IsAlive))
-            {
-                Thread.Sleep(100);
-            }
-        }
-
-        private void SortLinesAndSaveToFile(object? inputEnumerableLines)
-        {
-            SemStaticPool.SemaphoreProcessing.WaitOne();
-            var lines = inputEnumerableLines as IEnumerable<string> ?? Enumerable.Empty<string>();
-
-            SaveSortedObjectsToFile(StringsToSortedObjects(lines));
-            SemStaticPool.SemaphoreProcessing.Release();
-        }
-
-        private SortLine[] StringsToSortedObjects(IEnumerable<string> unsortedStrings)
-        {
-            Console.WriteLine("Lines sorting started");
-            var lines = unsortedStrings
+        var lines = File.ReadLines(fileName)
             .Where(_ => !string.IsNullOrEmpty(_))
             .Select(_ => new SortLine(_))
             .ToArray();
 
-            // Array.Sort(lines);
-            lines.SortMergeInPlacePar();
+        Array.Sort(lines);
 
-            Console.WriteLine("Lines sorting ended");
-            return lines;
-        }
-
-        private void SaveSortedObjectsToFile(SortLine[] lines)
+        var sb = new StringBuilder();
+        for (int i = 0; i < lines.Length; i++)
         {
-            var sortedFileName = Path.Combine(_options.OutputSplitFilesDirectory, Guid.NewGuid().ToString());
-            Console.WriteLine($"File saving started: {sortedFileName}");
-
-            var savingEnumerable = lines.Select(_ => _.ToString());
-
-            if (File.Exists(sortedFileName))
-                File.Delete(sortedFileName);
-
-            File.WriteAllLines(sortedFileName, savingEnumerable);
-            lines = Array.Empty<SortLine>();
-            Console.WriteLine($"File saving ended: {sortedFileName}");
+            sb.AppendLine(lines[i].ToString());
         }
 
-        private void SortFile(object? filePath)
-        {
-            var fileName = filePath as string ?? string.Empty;
-            SemStaticPool.SemaphoreProcessing.WaitOne();
-            if (!File.Exists(fileName))
-                throw new FileNotFoundException();
+        lines = Array.Empty<SortLine>();
 
-            Console.WriteLine($"File processing started: {fileName}");
+        var sortedFileName = Path.Combine(_options.OutputSplitFilesDirectory, Guid.NewGuid().ToString());
 
-            var lines = File.ReadLines(fileName)
-                .Where(_ => !string.IsNullOrEmpty(_))
-                .Select(_ => new SortLine(_))
-                .ToArray();
+        File.Delete(fileName);
 
-            Array.Sort(lines);
+        if (File.Exists(sortedFileName))
+            File.Delete(sortedFileName);
 
-            var sb = new StringBuilder();
-            for (int i = 0; i < lines.Length; i++)
-            {
-                sb.AppendLine(lines[i].ToString());
-            }
-
-            lines = Array.Empty<SortLine>();
-
-            var sortedFileName = fileName + StaticValues.SortedKey;
-
-            File.Delete(fileName);
-
-            if (File.Exists(sortedFileName))
-                File.Delete(sortedFileName);
-
-            File.WriteAllText(sortedFileName, sb.ToString());
-            SemStaticPool.SemaphoreProcessing.Release();
-            Console.WriteLine($"File processing ended: {fileName}");
-            sb.Clear();
-        }
+        File.WriteAllText(sortedFileName, sb.ToString());
+        SemStaticPool.SemaphoreProcessing.Release();
+        Console.WriteLine($"File processing ended: {fileName}");
+        sb.Clear();
     }
 }

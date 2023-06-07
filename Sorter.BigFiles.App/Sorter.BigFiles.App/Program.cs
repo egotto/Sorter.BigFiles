@@ -1,18 +1,26 @@
-﻿using Sorter.BigFiles.App;
+﻿using Microsoft.Extensions.Configuration;
+using Sorter.BigFiles.App;
 using Sorter.BigFiles.App.Services;
 
+var builder = new ConfigurationBuilder()
+    .SetBasePath(Directory.GetCurrentDirectory())
+    .AddJsonFile("appsettings.json");
+
+IConfiguration configuration = builder.Build();
+var configOptions = configuration.GetSection(ConfigOptions.SectionName).Get<ConfigOptions>() ??
+                    throw new ArgumentException("Bad config file");
+
+if (configOptions.AvailableCores != 0)
+    SemStaticPool.AvailableCores = configOptions.AvailableCores;
+
 var watch = System.Diagnostics.Stopwatch.StartNew();
-var options = new ConfigOptions();
 
-//var splitter = new LargeFileSplitter(options);
-//var filesCount = splitter.StartSplit();
-//var sorter = new SplitFileSorter(options);
-//sorter.SortFiles();
+var splitter = new LargeFileSplitter(configOptions);
+splitter.StartSplit();
+var sorter = new SplitFileSorter(configOptions);
+sorter.SortFiles();
 
-var largeFileProcessor = new LargeFileSplitter2(options);
-largeFileProcessor.StartSplit();
-
-var merger = new SortedFileMerger2(options);
+var merger = new SortedFileMerger(configOptions);
 var result = merger.MergeFiles();
 
 Thread.Sleep(100);
@@ -23,6 +31,6 @@ Console.WriteLine($"Result file: {result}");
 
 public static class SemStaticPool
 {
-    public static int AvailableCores = (int)Math.Ceiling(Environment.ProcessorCount * 0.75);
+    public static int AvailableCores = Environment.ProcessorCount;
     public static Semaphore SemaphoreProcessing = new Semaphore(AvailableCores, AvailableCores);
 }
