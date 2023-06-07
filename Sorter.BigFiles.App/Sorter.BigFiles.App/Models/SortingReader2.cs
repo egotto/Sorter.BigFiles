@@ -1,4 +1,4 @@
-namespace Sorter.BigFiles.App
+namespace Sorter.BigFiles.App.Models
 {
     internal class SortingReader2
     {
@@ -22,7 +22,7 @@ namespace Sorter.BigFiles.App
 
         public void ReadNext()
         {
-            if(_lines.MoveNext())
+            if (_lines.MoveNext())
             {
                 Value = new SortLine(_lines.Current.Split(StaticValues.LineSplitSeparator));
             }

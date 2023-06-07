@@ -1,6 +1,7 @@
 using System.Text;
+using Sorter.BigFiles.App.Models;
 
-namespace Sorter.BigFiles.App
+namespace Sorter.BigFiles.App.Services
 {
     internal class SortedFileMerger
     {
@@ -84,7 +85,7 @@ namespace Sorter.BigFiles.App
 
             File.AppendAllText(outputFileName, sb.ToString());
 
-            foreach (var r in readers.Where(_=>_.Value != null))
+            foreach (var r in readers.Where(_ => _.Value != null))
             {
                 var fName = ((FileStream)r.Reader.BaseStream).Name;
                 r.Reader.Close();

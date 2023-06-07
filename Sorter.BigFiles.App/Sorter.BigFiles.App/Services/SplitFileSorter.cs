@@ -1,7 +1,8 @@
 ﻿using System.Text;
 using HPCsharp;
+using Sorter.BigFiles.App.Models;
 
-namespace Sorter.BigFiles.App
+namespace Sorter.BigFiles.App.Services
 {
     internal class SplitFileSorter
     {
@@ -39,7 +40,6 @@ namespace Sorter.BigFiles.App
         public void SortLinesAndSave(IEnumerable<string> unsortedFileStream)
         {
             var threads = new List<Thread>();
-            long readedlines = 0;
             if (StaticValues.AverageLinesCountPerThread == -1)
             {
                 var t = new Thread(new ParameterizedThreadStart(SortLinesAndSaveToFile));
@@ -49,11 +49,14 @@ namespace Sorter.BigFiles.App
             }
             else
             {
+                long readLines = 0;
                 string[] buffer = new string[StaticValues.AverageLinesCountPerThread];
                 foreach (var line in unsortedFileStream)
                 {
-                    buffer[readedlines++] = line;
-                    if (readedlines < StaticValues.AverageLinesCountPerThread)
+                    SemStaticPool.SemaphoreProcessing.WaitOne();
+                    buffer[readLines++] = line;
+                    SemStaticPool.SemaphoreProcessing.Release();
+                    if (readLines < StaticValues.AverageLinesCountPerThread)
                         continue;
 
                     var t = new Thread(new ParameterizedThreadStart(SortLinesAndSaveToFile));
@@ -61,7 +64,7 @@ namespace Sorter.BigFiles.App
                     threads.Add(t);
                     Thread.Sleep(100);
                     buffer = new string[StaticValues.AverageLinesCountPerThread];
-                    readedlines = 0;
+                    readLines = 0;
                 }
 
                 if (buffer.Any())
@@ -99,7 +102,7 @@ namespace Sorter.BigFiles.App
 
             // Array.Sort(lines);
             lines.SortMergeInPlacePar();
-            
+
             Console.WriteLine("Lines sorting ended");
             return lines;
         }

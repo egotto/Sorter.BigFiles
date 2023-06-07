@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Sorter.BigFiles.App
+namespace Sorter.BigFiles.App.Services
 {
     public class LargeFileSplitter2
     {
@@ -30,7 +30,7 @@ namespace Sorter.BigFiles.App
                 Directory.Delete(_options.OutputSplitFilesDirectory, true);
 
             Directory.CreateDirectory(_options.OutputSplitFilesDirectory);
-            
+
             using var sr = new StreamReader(_options.SourceFilePath);
             var avrLinesCountPerThread = GetLinesCountPerThread(sr);
             StaticValues.AverageLinesCountPerThread = avrLinesCountPerThread;
@@ -46,13 +46,13 @@ namespace Sorter.BigFiles.App
             var srcFileSize = stream.BaseStream.Length;
             var cores = Environment.ProcessorCount;
             var availableRamInBytes = _options.AvailableRamInMBs * 1024 * 1024;
-            if(srcFileSize < availableRamInBytes)
+            if (srcFileSize < availableRamInBytes)
                 return -1;
 
             var ramPerCore = availableRamInBytes / cores;
             var bytesIn1000Lines = Encoding.Unicode.GetByteCount(GetFirst1000LinesFromFile(stream)) / 2;
             var avrBytesInLine = bytesIn1000Lines / 1000;
-            return (ramPerCore / avrBytesInLine) / 2;
+            return ramPerCore / avrBytesInLine / 2;
         }
 
         private string GetFirst1000LinesFromFile(StreamReader stream)

@@ -1,6 +1,6 @@
 ﻿using System.Text;
 
-namespace Sorter.BigFiles.App
+namespace Sorter.BigFiles.App.Services
 {
     internal class LargeFileSplitter
     {

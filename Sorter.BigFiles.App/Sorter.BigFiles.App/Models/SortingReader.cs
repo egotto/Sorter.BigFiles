@@ -1,4 +1,4 @@
-namespace Sorter.BigFiles.App
+namespace Sorter.BigFiles.App.Models
 {
     internal class SortingReader : IDisposable
     {

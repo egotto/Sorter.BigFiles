@@ -1,16 +1,16 @@
 ﻿using Sorter.BigFiles.App;
+using Sorter.BigFiles.App.Services;
 
 var watch = System.Diagnostics.Stopwatch.StartNew();
 var options = new ConfigOptions();
 
-var splitter = new LargeFileSplitter(options);
-var filesCount = splitter.StartSplit();
+//var splitter = new LargeFileSplitter(options);
+//var filesCount = splitter.StartSplit();
+//var sorter = new SplitFileSorter(options);
+//sorter.SortFiles();
 
-var sorter = new SplitFileSorter(options);
-sorter.SortFiles();
-
-// var largeFileProcessor = new LargeFileSplitter2(options);
-// largeFileProcessor.StartSplit();
+var largeFileProcessor = new LargeFileSplitter2(options);
+largeFileProcessor.StartSplit();
 
 var merger = new SortedFileMerger2(options);
 var result = merger.MergeFiles();

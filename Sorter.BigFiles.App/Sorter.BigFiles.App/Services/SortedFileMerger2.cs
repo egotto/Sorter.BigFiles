@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Sorter.BigFiles.App.Models;
 
-namespace Sorter.BigFiles.App
+namespace Sorter.BigFiles.App.Services
 {
     public class SortedFileMerger2
     {
@@ -77,7 +78,7 @@ namespace Sorter.BigFiles.App
                     .Where(_ => _.Value != null)
                     .Select(_ => new { v = _.Value, i = _.Index })
                     .ToArray();
-                    
+
                 Array.Sort(vals, (a, obj) => a.v.CompareTo(obj.v));
                 var val = vals.First();
 
