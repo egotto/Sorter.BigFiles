@@ -1,5 +1,4 @@
 ﻿using Sorter.BigFiles.App.Models;
-using System.Text;
 
 namespace Sorter.BigFiles.App.Services;
 
@@ -22,7 +21,7 @@ internal class SplitFileSorter
         }
 #endif
 
-        var files = Directory.GetFiles(_options.OutputSplitFilesDirectory).Where(_ => !_.Contains("sorted")).ToArray();
+        var files = Directory.GetFiles(_options.OutputSplitFilesDirectory);
         var threads = new List<Thread>();
         foreach (var file in files)
         {
@@ -41,12 +40,13 @@ internal class SplitFileSorter
     private void SortFile(object? filePath)
     {
         var fileName = filePath as string ?? string.Empty;
-        SemStaticPool.SemaphoreProcessing.WaitOne();
+        SemaphorePool.SemaphoreProcessing.WaitOne();
         if (!File.Exists(fileName))
             throw new FileNotFoundException();
 
-        Console.WriteLine($"File processing started: {fileName}");
+        Console.WriteLine($"File processing started: {fileName}. Thread#: {Environment.CurrentManagedThreadId}");
 
+        // Deserialization of input file to sorting objects
         var lines = File.ReadLines(fileName)
             .Where(_ => !string.IsNullOrEmpty(_))
             .Select(_ => new SortLine(_))
@@ -54,24 +54,15 @@ internal class SplitFileSorter
 
         Array.Sort(lines);
 
-        var sb = new StringBuilder();
-        for (int i = 0; i < lines.Length; i++)
-        {
-            sb.AppendLine(lines[i].ToString());
-        }
-
-        lines = Array.Empty<SortLine>();
-
+        var savingEnumerable = lines.Select(_ => _.ToString());
         var sortedFileName = Path.Combine(_options.OutputSplitFilesDirectory, Guid.NewGuid().ToString());
 
         File.Delete(fileName);
-
         if (File.Exists(sortedFileName))
             File.Delete(sortedFileName);
 
-        File.WriteAllText(sortedFileName, sb.ToString());
-        SemStaticPool.SemaphoreProcessing.Release();
-        Console.WriteLine($"File processing ended: {fileName}");
-        sb.Clear();
+        File.WriteAllLines(sortedFileName, savingEnumerable);
+        SemaphorePool.SemaphoreProcessing.Release();
+        Console.WriteLine($"File processing ended: {fileName}. Thread#: {Environment.CurrentManagedThreadId}");
     }
 }

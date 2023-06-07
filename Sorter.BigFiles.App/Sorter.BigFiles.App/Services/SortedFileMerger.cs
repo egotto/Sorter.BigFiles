@@ -3,19 +3,18 @@ using System.Text;
 
 namespace Sorter.BigFiles.App.Services;
 
-public class SortedFileMerger
+internal class SortedFileMerger
 {
     private readonly ConfigOptions _options;
 
-    public SortedFileMerger(ConfigOptions configOptions)
+    internal SortedFileMerger(ConfigOptions configOptions)
     {
         _options = configOptions;
     }
 
-    public string MergeFiles()
+    internal string MergeFiles()
     {
-        var files = Directory
-            .GetFiles(_options.OutputSplitFilesDirectory);
+        var files = Directory.GetFiles(_options.OutputSplitFilesDirectory);
 
         var resultFile = MergeSplitFiles(files);
 
@@ -30,10 +29,12 @@ public class SortedFileMerger
         if (files.Length <= 1)
             return files;
 
+        const int concFilesMerged = 3;
+
         var threads = new List<Thread>();
-        for (int i = 0; i < files.Length; i += 3)
+        for (int i = 0; i < files.Length; i += concFilesMerged)
         {
-            var toBeMerging = files.Skip(i).Take(3).ToArray();
+            var toBeMerging = files.Skip(i).Take(concFilesMerged).ToArray();
             if (toBeMerging.Length == 1)
                 break;
 
@@ -48,20 +49,22 @@ public class SortedFileMerger
             Thread.Sleep(100);
         }
 
+        Thread.Sleep(100);
+
         return MergeSplitFiles(Directory.GetFiles(_options.OutputSplitFilesDirectory));
     }
 
     private void MergeSelectedFilesIntoOne(object? filesArray)
     {
         var files = filesArray as string[] ?? Array.Empty<string>();
-        SemStaticPool.SemaphoreProcessing.WaitOne();
-        Console.WriteLine($"Started merging {files.Length} files in Thread#: {Thread.CurrentThread.ManagedThreadId}");
+        SemaphorePool.SemaphoreProcessing.WaitOne();
+        Console.WriteLine($"Started merging {files.Length} files in Thread#: {Environment.CurrentManagedThreadId}");
 
-        var outputFileName = Path.Combine(_options.OutputSplitFilesDirectory, Guid.NewGuid().ToString() + ".txt");
+        var outputFileName = Path.Combine(_options.OutputSplitFilesDirectory, Guid.NewGuid().ToString());
         if (File.Exists(outputFileName))
             File.Delete(outputFileName);
 
-        List<SortingReader> readers = new List<SortingReader>(files.Length);
+        List<SortingReader> readers = new(files.Length);
 
         Parallel.ForEach(files, (file, state, index) => readers.Add(new SortingReader(file, (int)index)));
 
@@ -70,15 +73,15 @@ public class SortedFileMerger
 
         while (readers.Any(_ => _.Value != null))
         {
-            var vals = readers
+            var values = readers
                 .Where(_ => _.Value != null)
                 .Select(_ => new { v = _.Value, i = _.Index })
                 .ToArray();
 
-            Array.Sort(vals, (a, obj) => a.v.CompareTo(obj.v));
-            var val = vals.First();
+            Array.Sort(values, (a, obj) => a.v!.CompareTo(obj.v));
+            var val = values.First();
 
-            AppendLineToFile(val.v.ToString());
+            AppendLineToFile(val.v!.ToString());
             readers.First(_ => _.Index == val.i).ReadNext();
         }
 
@@ -95,7 +98,7 @@ public class SortedFileMerger
             }
         }
 
-        SemStaticPool.SemaphoreProcessing.Release();
-        Console.WriteLine($"Ended merging files in Thread#: {Thread.CurrentThread.ManagedThreadId}");
+        SemaphorePool.SemaphoreProcessing.Release();
+        Console.WriteLine($"Ended merging files in Thread#: {Environment.CurrentManagedThreadId}");
     }
 }
